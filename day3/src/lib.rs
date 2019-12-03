@@ -160,11 +160,63 @@ pub fn part_one(cmd1: String, cmd2: String) -> f64 {
     record
 }
 
-pub fn test_part_one() {
-    let l1 = "R8,U5,L5,D3".to_string();
-    let l2 = "U7,R6,D4,L4".to_string();
+impl Line {
+    fn len(&mut self) -> f64 {
+        let x1 = self.start.x;
+        let x2 = self.end.x;
     
-    assert!(part_one(l1, l2) == 6.0);
+        let y1 = self.start.y;
+        let y2 = self.end.y;
+    
+        ((x2-x1).powi(2) + (y2-y1).powi(2)).sqrt()
+    }
+}
+
+fn difference(a: &Position, b: &Position) -> f64 {
+    let end_pos = Position {
+        x: a.x,
+        y: a.y
+     };
+
+     let start_pos = Position {
+         x: b.x,
+         y: b.y,
+    };
+    let mut line = Line { start: start_pos, end: end_pos };
+    return line.len()
+}
+
+pub fn part_two(cmd1: String, cmd2: String) -> f64 {
+
+    let cmd_line1 = format_input_line_to_commands(cmd1);
+    let cmd_line2 = format_input_line_to_commands(cmd2);
+
+    let mut wire_path1 = traverse(cmd_line1);
+    let mut wire_path2 = traverse(cmd_line2);
+
+    let mut record = std::f64::MAX;
+    let mut steps1 = 0.0;
+
+    for wire1 in &mut wire_path1 {
+        steps1 += wire1.len(); 
+        let mut steps2 = 0.0;
+        for wire2 in &mut wire_path2 {
+            steps2 += wire2.len();
+            match line_intersects(&wire1, &wire2) {
+                Some(pos) => {
+                    let difference_wire1 = difference(&wire1.end, &pos);
+                    let difference_wire2 = difference(&wire2.end, &pos);
+                    
+                    let length = steps1 - difference_wire1 + steps2 - difference_wire2;
+                    if length < record {
+                        record = length;
+                    }
+                },
+                None => continue,
+            } 
+        }
+    }
+    record
 }
 
 impl fmt::Display for Heading {
@@ -195,3 +247,20 @@ impl Heading {
         }
     }
 }
+
+#[test]
+fn test_part_one() {
+    let l1 = "R8,U5,L5,D3".to_string();
+    let l2 = "U7,R6,D4,L4".to_string();
+    
+    assert!(part_one(l1, l2) == 6.0);
+}
+
+#[test]
+fn test_part_two() {
+    let l1 = "R8,U5,L5,D3".to_string();
+    let l2 = "U7,R6,D4,L4".to_string();
+
+    assert!(part_two(l1, l2) == 30.0);
+}
+

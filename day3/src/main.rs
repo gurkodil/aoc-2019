@@ -13,8 +13,6 @@ fn main() {
 
     let wires = content.split("\n").collect::<Vec<&str>>();
     
-    lib::test_part_one();
-
     if wires.len() < 2 {
         return
     }
@@ -25,4 +23,11 @@ fn main() {
         );
 
     println!("Part one: {}", res_part_one);
+    
+    let res_part_two = lib::part_two(
+        wires[0].to_string(),
+        wires[1].to_string()
+        );
+
+    println!("Part two: {}", res_part_two);
 }
