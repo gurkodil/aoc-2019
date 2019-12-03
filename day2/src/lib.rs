@@ -9,9 +9,9 @@ fn evaluate(input: &Vec<u64>) -> Vec<u64> {
     for i in (0..result.len()).step_by(4){
         match result[i] {
             1 => {
-                handle_add(&mut result, i, add)
+                operate(&mut result, i, add)
             },
-            2 =>  handle_add(&mut result, i, mult),
+            2 =>  operate(&mut result, i, mult),
             99 => break,
             _ => eprintln!("Unexpeced instruction!")
         }
@@ -56,7 +56,7 @@ fn mult(a: u64, b:u64) -> u64 {
 }
 
 
-fn handle_add(input: &mut Vec<u64>, index: usize, op: Operator) {
+fn operate(input: &mut Vec<u64>, index: usize, op: Operator) {
     let i1 = input[index + 1];
     let i2 = input[index + 2];
     
