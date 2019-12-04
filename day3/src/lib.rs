@@ -104,13 +104,6 @@ fn line_intersects(l1: &Line, l2: &Line) -> Option<Position> {
     let x4 = l2.end.x;
     let y4 = l2.end.y;
 
-    if x1 == 0.0 && y1 == 0.0 
-        || x3 == 0.0 && y3 == 0.0 
-        || x2 == 0.0 && y2 == 0.0
-        || x4 == 0.0 && y4 == 0.0 {
-        return None
-    }
-
     let den = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
 
     if den == 0.0 {
@@ -146,15 +139,12 @@ pub fn part_one(cmd1: String, cmd2: String) -> f64 {
     let mut record = std::f64::MAX;
     for wire1 in &mut wire_path1 {
         for wire2 in &mut wire_path2 {
-            match line_intersects(&wire1, &wire2) {
-                Some(pos) => {
-                    let length = pos.x.abs() + pos.y.abs();
-                    if length < record {
-                        record = length;
-                    }
-                },
-                None => continue,
-            } 
+            if let Some(pos) = line_intersects(&wire1, &wire2) {
+                let length = pos.x.abs() + pos.y.abs(); // Manhattan distance
+                if length < record {
+                    record = length;
+                }
+            }
         }
     }
     record
@@ -202,22 +192,20 @@ pub fn part_two(cmd1: String, cmd2: String) -> f64 {
         let mut steps2 = 0.0;
         for wire2 in &mut wire_path2 {
             steps2 += wire2.len();
-            match line_intersects(&wire1, &wire2) {
-                Some(pos) => {
-                    let difference_wire1 = difference(&wire1.end, &pos);
-                    let difference_wire2 = difference(&wire2.end, &pos);
-                    
-                    let length = steps1 - difference_wire1 + steps2 - difference_wire2;
-                    if length < record {
-                        record = length;
-                    }
-                },
-                None => continue,
+            if let Some(pos) = line_intersects(&wire1, &wire2) {
+                let diff_wire1 = difference(&wire1.end, &pos);
+                let diff_wire2 = difference(&wire2.end, &pos);
+                
+                let length = steps1 - diff_wire1 + steps2 - diff_wire2;
+                if length < record {
+                    record = length;
+                }
             } 
         }
     }
     record
 }
+
 
 impl fmt::Display for Heading {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
