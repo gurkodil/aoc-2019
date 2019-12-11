@@ -53,13 +53,15 @@
 //     - Length of the instructions varies,depending on the instruction
 //       format.
 //
-use std::io;
 
-struct MemHandler {
+pub struct MemHandler {
     raw: Vec<i64>,
     op: usize,
     parameter_modes: usize,
     parameter_offset: usize,
+    result: Vec<i64>,
+    input: Vec<i64>,
+    finished: bool,
 }
 
 impl MemHandler {
@@ -69,6 +71,9 @@ impl MemHandler {
             op: 0,
             parameter_modes: 0,
             parameter_offset: 1,
+            result: vec![],
+            input: vec![],
+            finished: false,
         };
     }
 
@@ -87,6 +92,21 @@ impl MemHandler {
         self.op = to;
     }
 
+    pub fn add_input(&mut self, input: i64) {
+        self.input.insert(0, input);
+    }
+
+    pub fn get_result(&self) -> Option<i64> {
+        if self.result.len() == 0 {
+            None
+        } else {
+            Some(self.result[self.result.len() - 1])
+        }
+    }
+
+    pub fn finished(&self) -> bool {
+        self.finished
+    }
     pub fn move_op_by(&mut self, steps: usize) {
         self.op += steps;
     }
@@ -106,106 +126,83 @@ impl MemHandler {
             return self.raw[address as usize];
         }
     }
-}
 
-pub fn run_diag(data: Vec<i64>, input: &mut Vec<i64>) -> Vec<i64> {
-    let mut mem_handler = MemHandler::new(data.clone());
-    let mut output = Vec::new();
-
-    loop {
-        match mem_handler.next() {
+    pub fn run(&mut self) -> Option<i64> {
+        match self.next() {
             1 => {
                 // ADD
-                let arg0 = mem_handler.get_next_parameter();
-                let arg1 = mem_handler.get_next_parameter();
-                let arg2 = mem_handler.get_next_pointer();
-                mem_handler.set_val(arg2, arg0 + arg1);
-                mem_handler.move_op_by(4);
+                let arg0 = self.get_next_parameter();
+                let arg1 = self.get_next_parameter();
+                let arg2 = self.get_next_pointer();
+                self.set_val(arg2, arg0 + arg1);
+                self.move_op_by(4);
             }
             2 => {
                 // MULTIPLY
-                let arg0 = mem_handler.get_next_parameter();
-                let arg1 = mem_handler.get_next_parameter();
-                let arg2 = mem_handler.get_next_pointer();
-                mem_handler.set_val(arg2, arg0 * arg1);
-                mem_handler.move_op_by(4);
+                let arg0 = self.get_next_parameter();
+                let arg1 = self.get_next_parameter();
+                let arg2 = self.get_next_pointer();
+                self.set_val(arg2, arg0 * arg1);
+                self.move_op_by(4);
             }
             3 => {
-                let arg0 = mem_handler.get_next_pointer();
-                if input.is_empty() {
-                    loop {
-                        let input = &mut String::new();
-                        //                    println!("Insert a number: ");
-                        let stdin = io::stdin();
-                        if let Err(err) = stdin.read_line(input) {
-                            eprintln!("Error reading stdin {}", err);
-                        }
-
-                        match input.trim().parse::<i64>() {
-                            Ok(val) => {
-                                mem_handler.set_val(arg0, val);
-                                mem_handler.move_op_by(2);
-                                break;
-                            }
-                            Err(_) => {
-                                eprintln!("Bad input: expected number");
-                            }
-                        }
-                    }
-                } else {
-                    mem_handler.set_val(arg0, input.pop().unwrap());
-                    mem_handler.move_op_by(2);
+                // INPUT
+                let arg0 = self.get_next_pointer();
+                if let Some(val) = self.input.pop() {
+                    self.set_val(arg0, val);
+                    self.move_op_by(2);
                 }
             }
             4 => {
                 // GET OUTPUT
-                let arg0 = mem_handler.get_next_parameter();
-                output.push(arg0);
-                mem_handler.move_op_by(2);
+                let arg0 = self.get_next_parameter();
+                self.result.push(arg0);
+                self.move_op_by(2);
+                return Some(arg0);
             }
             5 => {
                 // JUMP IF TRUE
-                let arg0 = mem_handler.get_next_parameter();
+                let arg0 = self.get_next_parameter();
                 if arg0 != 0 {
-                    let arg1 = mem_handler.get_next_parameter() as usize;
-                    mem_handler.move_op(arg1);
+                    let arg1 = self.get_next_parameter() as usize;
+                    self.move_op(arg1);
                 } else {
-                    mem_handler.move_op_by(3);
+                    self.move_op_by(3);
                 }
             }
             6 => {
                 // JUMP IF FALSE
-                let arg0 = mem_handler.get_next_parameter();
+                let arg0 = self.get_next_parameter();
                 if arg0 == 0 {
-                    let arg1 = mem_handler.get_next_parameter() as usize;
-                    mem_handler.move_op(arg1);
+                    let arg1 = self.get_next_parameter() as usize;
+                    self.move_op(arg1);
                 } else {
-                    mem_handler.move_op_by(3);
+                    self.move_op_by(3);
                 }
             }
             7 => {
                 // LESS THAN
-                let arg0 = mem_handler.get_next_parameter();
-                let arg1 = mem_handler.get_next_parameter();
-                let arg3 = mem_handler.get_next_pointer();
+                let arg0 = self.get_next_parameter();
+                let arg1 = self.get_next_parameter();
+                let arg3 = self.get_next_pointer();
                 let val = if arg0 < arg1 { 1 } else { 0 };
-                mem_handler.set_val(arg3, val);
-                mem_handler.move_op_by(4);
+                self.set_val(arg3, val);
+                self.move_op_by(4);
             }
             8 => {
                 // EQUALS
-                let arg0 = mem_handler.get_next_parameter();
-                let arg1 = mem_handler.get_next_parameter();
-                let arg3 = mem_handler.get_next_pointer();
+                let arg0 = self.get_next_parameter();
+                let arg1 = self.get_next_parameter();
+                let arg3 = self.get_next_pointer();
                 let val = if arg0 == arg1 { 1 } else { 0 };
-                mem_handler.set_val(arg3, val);
-                mem_handler.move_op_by(4);
+                self.set_val(arg3, val);
+                self.move_op_by(4);
             }
             // TERMINATE
-            99 => break,
+            99 => self.finished = true,
             other => panic!("Unexpected operation: {}", other),
         }
-    }
 
-    return output;
+        return None;
+    }
 }

@@ -1,55 +1,55 @@
 // https://adventofcode.com/2019/day/7
 mod lib;
 mod parser;
+use permutohedron::Heap;
 
 fn main() {
-    let res = part_one();
+    let res = find_max_signal(&mut [0, 1, 2, 3, 4]);
+    println!("Part one: {}", res);
+    let res = find_max_signal(&mut [5, 6, 7, 8, 9]);
     println!("Part one: {}", res);
 }
 
-fn part_one() -> i64 {
+fn find_max_signal(phase_setting: &mut [i64; 5]) -> i64 {
     let op_codes = parser::parse_file("data/07.dat".to_string());
-    let mut phase_sequence = [0; 5];
     let mut record = 0;
+    let perms = Heap::new(phase_setting);
 
-    // Testing all combinations of phase settings
-    for a in 0..5 {
-        for b in 0..5 {
-            for c in 0..5 {
-                for d in 0..5 {
-                    for e in 0..5 {
-                        phase_sequence[0] = a;
-                        phase_sequence[1] = b;
-                        phase_sequence[2] = c;
-                        phase_sequence[3] = d;
-                        phase_sequence[4] = e;
-
-                        // All phases have to be unique
-                        if !(1..phase_sequence.len())
-                            .any(|i| phase_sequence[i..].contains(&phase_sequence[i - 1]))
-                        {
-                            let res = max_signal_from_phase(&phase_sequence, op_codes.clone());
-                            if res > record {
-                                record = res;
-                            }
-                        }
-                    }
-                }
-            }
+    for perm in perms {
+        let res = max_of_single_phase(&perm, op_codes.clone()).unwrap();
+        if res > record {
+            record = res;
         }
     }
     return record;
 }
 
-fn max_signal_from_phase(phase_sequence: &[i64; 5], program: Vec<i64>) -> i64 {
-    let mut input = vec![0];
-    for i in 0..phase_sequence.len() {
-        input.push(phase_sequence[i]);
-        let res = lib::run_diag(program.clone(), &mut input);
-        input.push(res[0]);
+fn max_of_single_phase(phase_sequence: &[i64; 5], program: Vec<i64>) -> Option<i64> {
+    let mut computers = vec![
+        lib::MemHandler::new(program.clone()),
+        lib::MemHandler::new(program.clone()),
+        lib::MemHandler::new(program.clone()),
+        lib::MemHandler::new(program.clone()),
+        lib::MemHandler::new(program.clone()),
+    ];
+
+    for i in 0..computers.len() {
+        computers[i].add_input(phase_sequence[i]);
     }
 
-    return input.pop().unwrap();
+    let mut finished: [bool; 5] = [false; 5];
+    let mut prev_val = Some(0);
+    while finished.iter().any(|f| *f == false) {
+        for i in 0..computers.len() {
+            if let Some(val) = prev_val {
+                computers[i].add_input(val);
+            }
+            prev_val = computers[i].run();
+            finished[i] = computers[i].finished();
+        }
+    }
+
+    return computers[4].get_result();
 }
 
 #[test]
