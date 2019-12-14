@@ -147,7 +147,7 @@ impl MemHandler {
         self.raw[address]
     }
 
-    pub fn set(&mut self, address: usize, val: i64) {
+    fn set(&mut self, address: usize, val: i64) {
         if address >= self.raw.len() {
             self.allocate(address);
         }
@@ -155,7 +155,7 @@ impl MemHandler {
         self.raw[address] = val;
     }
 
-    pub fn move_op(&mut self, to: usize) {
+    fn move_op(&mut self, to: usize) {
         self.op = to;
     }
 
